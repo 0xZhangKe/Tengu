@@ -20,6 +20,7 @@ rootProject.name = "tengu"
 include(":framework")
 include(":common:module-visitor")
 include(":common:repository")
+include(":common:ui")
 include(":app-hosting")
 include(":app")
 include(":desktop-app")

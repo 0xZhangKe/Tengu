@@ -13,7 +13,7 @@ import androidx.savedstate.serialization.SavedStateConfiguration
 import com.tengu.app.common.module.visitor.IAppScreenVisitor
 import com.tengu.app.framework.NavEntryProvider
 import com.tengu.app.framework.nav.LocalNavBackStack
-import com.tengu.app.framework.theme.MemoTheme
+import com.tengu.app.framework.theme.TenguTheme
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.koin.compose.getKoin
@@ -38,7 +38,7 @@ fun TenguApp() {
         },
         screenVisitor.startNavKey,
     )
-    MemoTheme {
+    TenguTheme {
         CompositionLocalProvider(
             LocalNavBackStack provides backStack
         ) {
