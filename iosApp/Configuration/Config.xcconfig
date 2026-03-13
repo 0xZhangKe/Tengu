@@ -1,0 +1,14 @@
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+PRODUCT_NAME = Tengu
+PRODUCT_BUNDLE_IDENTIFIER = com.tengu.app
+DEVELOPMENT_TEAM = 
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 1
+IPHONEOS_DEPLOYMENT_TARGET = 15.0
+ENABLE_USER_SCRIPT_SANDBOXING = NO
+
+// Kotlin/Native framework
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(SRCROOT)/../app-hosting/build/bin/iosSimulatorArm64/debugFramework
+OTHER_LDFLAGS = $(inherited) -framework TenguKit
