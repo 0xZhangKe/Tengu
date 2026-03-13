@@ -38,6 +38,9 @@ okio = "3.16.2"
 
 multiplatformsettings = "1.3.0"
 
+acp = "0.16.6"
+slf4jSimple = "2.0.17"
+
 [bundles]
 androidx-activity = ["androidx.activity", "androidx.activity.ktx", "androidx.activity.compose"]
 androidx-nav3 = ["androidx-nav3-runtime", "jetbrains-nav3-ui", "lifecycle-viewmodel-nav3"]
@@ -110,6 +113,9 @@ composeCompiler-gradlePlugin = { module = "org.jetbrains.kotlin:compose-compiler
 kermit = { module = "co.touchlab:kermit", version = "2.0.4" }
 
 multiplatformsettings-core = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatformsettings" }
+
+acp = { module = "com.agentclientprotocol:acp", version.ref = "acp" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4jSimple" }
 
 [plugins]
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
