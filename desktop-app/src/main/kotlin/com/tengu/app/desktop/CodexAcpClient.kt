@@ -23,13 +23,14 @@ import com.agentclientprotocol.model.StopReason
 import com.agentclientprotocol.model.WriteTextFileResponse
 import com.agentclientprotocol.protocol.Protocol
 import com.agentclientprotocol.transport.StdioTransport
+import com.tengu.app.common.ui.model.ChatMessageRole
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
@@ -52,6 +53,13 @@ data class CodexChatMessage(
 enum class CodexChatRole(val label: String) {
     USER("You"),
     ASSISTANT("Codex"),
+}
+
+fun CodexChatRole.convert(): ChatMessageRole {
+    return when (this) {
+        CodexChatRole.USER -> ChatMessageRole.USER
+        CodexChatRole.ASSISTANT -> ChatMessageRole.ASSISTANT
+    }
 }
 
 data class CodexChatState(
@@ -150,7 +158,11 @@ private class DefaultCodexChatSession(
                 )
             } catch (t: Throwable) {
                 destroyProcess(launchedProcess)
-                updateState(connected = false, busy = false, status = "Connect failed: ${t.message ?: t::class.simpleName}")
+                updateState(
+                    connected = false,
+                    busy = false,
+                    status = "Connect failed: ${t.message ?: t::class.simpleName}"
+                )
                 throw t
             }
         }

@@ -11,6 +11,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                implementation(project(":framework"))
                 implementation(libs.jetbrains.compose.runtime)
                 implementation(libs.jetbrains.compose.ui)
                 implementation(libs.jetbrains.compose.foundation)
