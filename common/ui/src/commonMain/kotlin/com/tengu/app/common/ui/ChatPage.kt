@@ -7,10 +7,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -25,14 +26,19 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.tengu.app.common.ui.model.ChatMessage
+import com.tengu.app.framework.theme.TenguTheme
+import com.tengu.app.framework.utils.dpToPx
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatPage(
     modifier: Modifier = Modifier,
     messageList: List<ChatMessage>,
-    onSendMessageClick: (String) -> Unit,
     connected: Boolean,
+    title: String,
+    onSendMessageClick: (String) -> Unit,
+    onTitleClick: () -> Unit,
 ) {
     var inputText by remember { mutableStateOf("") }
     val density = LocalDensity.current
@@ -40,7 +46,17 @@ fun ChatPage(
     SubcomposeLayout(
         modifier = modifier,
     ) { constraints ->
-        val inputPlaceables = subcompose(ChatPageSlot.InputBar) {
+        val titlePlaceable = subcompose(ChatPageSlot.Title) {
+            TextButton(
+                onClick = onTitleClick,
+            ) {
+                Text(
+                    text = title,
+                    style = TenguTheme.typography.titleMedium,
+                )
+            }
+        }.map { it.measure(constraints) }.first()
+        val inputPlaceable = subcompose(ChatPageSlot.InputBar) {
             ChatInputBar(
                 inputText = inputText,
                 connected = connected,
@@ -55,18 +71,13 @@ fun ChatPage(
                 },
             )
         }.map { measurable ->
-            measurable.measure(
-                constraints.copy(
-                    minWidth = 0,
-                    minHeight = 0,
-                ),
-            )
-        }
+            measurable.measure(constraints)
+        }.first()
 
-        val inputHeight = inputPlaceables.maxOfOrNull { it.height } ?: 0
+        val inputHeight = inputPlaceable.height
         val bottomPadding = with(density) { inputHeight.toDp() } + 16.dp
 
-        val contentPlaceables = subcompose(ChatPageSlot.Content) {
+        val contentPlaceable = subcompose(ChatPageSlot.Content) {
             ChatMessageList(
                 messageList = messageList,
                 contentPadding = PaddingValues(
@@ -75,39 +86,28 @@ fun ChatPage(
                 ),
             )
         }.map { measurable ->
-            measurable.measure(
-                constraints.copy(
-                    minWidth = 0,
-                    minHeight = 0,
-                ),
-            )
-        }
+            measurable.measure(constraints)
+        }.first()
 
         val layoutWidth = if (constraints.hasBoundedWidth) {
             constraints.maxWidth
         } else {
-            maxOf(
-                contentPlaceables.maxOfOrNull { it.width } ?: 0,
-                inputPlaceables.maxOfOrNull { it.width } ?: 0,
-            )
+            contentPlaceable.width
         }
         val layoutHeight = if (constraints.hasBoundedHeight) {
             constraints.maxHeight
         } else {
-            maxOf(
-                contentPlaceables.maxOfOrNull { it.height } ?: 0,
-                inputHeight,
-            )
+            contentPlaceable.height
         }
 
         layout(layoutWidth, layoutHeight) {
-            contentPlaceables.forEach { placeable ->
-                placeable.placeRelative(0, 0)
-            }
-            val inputY = layoutHeight - inputHeight
-            inputPlaceables.forEach { placeable ->
-                placeable.placeRelative(0, inputY)
-            }
+            contentPlaceable.placeRelative(0, 0)
+            val inputY = layoutHeight - inputHeight - 8.dpToPx(density).roundToInt()
+            inputPlaceable.placeRelative(0, inputY)
+            titlePlaceable.placeRelative(
+                x = layoutWidth / 2 - titlePlaceable.width / 2,
+                y = 0,
+            )
         }
     }
 }
@@ -115,6 +115,7 @@ fun ChatPage(
 private enum class ChatPageSlot {
     Content,
     InputBar,
+    Title,
 }
 
 @Composable
@@ -130,6 +131,14 @@ private fun ChatInputBar(
             .navigationBarsPadding()
             .imePadding()
             .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            draggedElevation = 2.dp,
+            focusedElevation = 2.dp,
+            hoveredElevation = 2.dp,
+            pressedElevation = 2.dp,
+            disabledElevation = 2.dp,
+        ),
     ) {
         Box(
             modifier = Modifier
@@ -152,7 +161,7 @@ private fun ChatInputBar(
                 minLines = 1,
                 maxLines = 4,
             )
-            Button(
+            TextButton(
                 modifier = Modifier.align(Alignment.BottomEnd),
                 onClick = onSendClick,
             ) {

@@ -38,11 +38,9 @@ import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
 import kotlinx.serialization.json.JsonElement
+import java.io.File
 import java.nio.file.Path
-import java.nio.file.Paths
 import kotlin.io.path.exists
-import kotlin.io.path.readText
-import kotlin.io.path.writeText
 import kotlin.time.Duration.Companion.seconds
 
 data class CodexChatMessage(
@@ -76,6 +74,9 @@ data class CodexChatTurn(
 )
 
 interface CodexChatSession : AutoCloseable {
+
+    val projectDir: String
+
     val state: StateFlow<CodexChatState>
 
     suspend fun start()
@@ -85,15 +86,15 @@ interface CodexChatSession : AutoCloseable {
 
 fun createCodexChatSession(
     coroutineScope: CoroutineScope,
-    projectDir: Path = Paths.get("").toAbsolutePath().normalize(),
+    projectDir: String,
 ): CodexChatSession = DefaultCodexChatSession(
     coroutineScope = coroutineScope,
-    projectDir = projectDir.toAbsolutePath().normalize(),
+    projectDir = projectDir,
 )
 
 private class DefaultCodexChatSession(
     private val coroutineScope: CoroutineScope,
-    private val projectDir: Path,
+    override val projectDir: String,
 ) : CodexChatSession {
 
     private val connectionMutex = Mutex()
@@ -142,7 +143,7 @@ private class DefaultCodexChatSession(
                 val createdSession = withTimeout(20.seconds) {
                     client.newSession(
                         SessionCreationParameters(
-                            cwd = projectDir.toString(),
+                            cwd = projectDir,
                             mcpServers = emptyList()
                         ),
                         operationsFactory = DesktopClientSupport(projectDir, ::updateStatus),
@@ -319,7 +320,7 @@ private class DefaultCodexChatSession(
 }
 
 private class DesktopClientSupport(
-    private val projectDir: Path,
+    private val projectDir: String,
     private val updateStatus: (String) -> Unit,
 ) : ClientOperationsFactory {
 
@@ -330,7 +331,7 @@ private class DesktopClientSupport(
 }
 
 private class DesktopClientSession(
-    private val projectDir: Path,
+    private val projectDir: String,
     private val updateStatus: (String) -> Unit,
 ) : ClientSessionOperations, FileSystemOperations {
 
@@ -359,7 +360,7 @@ private class DesktopClientSession(
         limit: UInt?,
         _meta: JsonElement?
     ): ReadTextFileResponse {
-        val file = projectDir.resolve(path).normalize()
+        val file = File(projectDir)
         return ReadTextFileResponse(file.readText())
     }
 
@@ -368,20 +369,20 @@ private class DesktopClientSession(
         content: String,
         _meta: JsonElement?
     ): WriteTextFileResponse {
-        val file = projectDir.resolve(path).normalize()
+        val file = File(path)
         file.writeText(content)
         return WriteTextFileResponse()
     }
 }
 
-private fun launchCodexAcp(projectRoot: Path): Process {
+private fun launchCodexAcp(projectRoot: String): Process {
     val executable = resolveCodexAcpExecutable()
     return ProcessBuilder(
         executable.toString(),
         "-c",
         "shell_environment_policy.inherit=all",
     )
-        .directory(projectRoot.toFile())
+        .directory(File(projectRoot))
         .redirectError(ProcessBuilder.Redirect.PIPE)
         .start()
 }

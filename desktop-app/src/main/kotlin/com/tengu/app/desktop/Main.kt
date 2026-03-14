@@ -1,7 +1,10 @@
 package com.tengu.app.desktop
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.tengu.app.desktop.composable.LocalWindowScope
 import com.tengu.app.desktop.screen.TenguApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
@@ -27,9 +30,19 @@ private fun startDesktopApp() {
     application {
         Window(
             onCloseRequest = ::exitApplication,
-            title = "Tengu",
+            title = "",
+            undecorated = false,
         ) {
-            TenguApp()
+            LaunchedEffect(Unit) {
+                window.rootPane.putClientProperty("apple.awt.fullWindowContent", true)
+                window.rootPane.putClientProperty("apple.awt.transparentTitleBar", true)
+                window.rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
+            }
+            CompositionLocalProvider(
+                LocalWindowScope provides this
+            ) {
+                TenguApp()
+            }
         }
     }
 }
