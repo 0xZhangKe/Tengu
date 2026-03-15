@@ -18,7 +18,7 @@ data class HomeUiState(
                 connected = false,
                 status = "",
                 path = null,
-                messages = mockMessageList(),
+                messages = emptyList(),
             )
         }
 

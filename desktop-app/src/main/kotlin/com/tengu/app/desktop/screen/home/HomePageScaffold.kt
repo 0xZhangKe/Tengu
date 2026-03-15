@@ -33,7 +33,7 @@ import kotlin.math.min
 
 private const val drawerWidthInScreenRatio = 0.24F
 private const val maxDrawerWidthInScreenRatio = 0.4F
-private val drawerMinWidth = 240.dp
+private val drawerMinWidth = 140.dp
 private val drawerResizeHandleWidth = 10.dp
 private val drawerOuterPadding = 4.dp
 private val contentOuterPadding = 6.dp
@@ -89,7 +89,11 @@ fun HomePageScaffold(
 
         Box(
             modifier = Modifier
-                .padding(start = drawerOuterPadding, top = drawerOuterPadding, bottom = drawerOuterPadding)
+                .padding(
+                    start = drawerOuterPadding,
+                    top = drawerOuterPadding,
+                    bottom = drawerOuterPadding,
+                )
                 .fillMaxHeight()
                 .width(drawerWidth)
         ) {
@@ -119,7 +123,7 @@ fun HomePageScaffold(
                 .padding(
                     start = contentStartPadding,
                     top = contentOuterPadding,
-                    end = contentOuterPadding,
+                    end = contentOuterPadding * 2,
                     bottom = contentOuterPadding,
                 )
         ) {

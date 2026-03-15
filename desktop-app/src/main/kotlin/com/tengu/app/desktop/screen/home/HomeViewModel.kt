@@ -7,6 +7,7 @@ import com.tengu.app.desktop.CodexChatMessage
 import com.tengu.app.desktop.CodexChatSession
 import com.tengu.app.desktop.convert
 import com.tengu.app.desktop.createCodexChatSession
+import com.tengu.app.framework.utils.Log
 import com.tengu.app.framework.utils.launchInViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,11 +64,12 @@ class HomeViewModel : ViewModel() {
         sessionStateJob?.cancel()
         sessionStateJob = launchInViewModel {
             session.state.collect { state ->
+                println(state.status)
                 _uiState.update {
                     it.copy(
                         connected = state.connected,
                         status = state.status,
-//                        messages = state.messages.map { message -> message.convert() },
+                        messages = state.messages.map { message -> message.convert() },
                     )
                 }
             }

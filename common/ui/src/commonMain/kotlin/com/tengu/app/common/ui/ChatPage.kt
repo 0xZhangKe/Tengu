@@ -79,7 +79,7 @@ fun ChatPage(
         }.first()
 
         val inputHeight = inputPlaceable.height
-        val bottomPadding = with(density) { inputHeight.toDp() } + 16.dp
+        val bottomPadding = with(density) { inputHeight.toDp() } + 32.dp
 
         val contentPlaceable = subcompose(ChatPageSlot.Content) {
             ChatMessageList(
