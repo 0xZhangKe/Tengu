@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import java.io.File
 import java.util.UUID
 import kotlin.time.Clock
@@ -22,42 +23,63 @@ class HomeViewModel : ViewModel() {
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private var session: CodexChatSession? = null
+    private var sessionPath: String? = null
+    private var sessionStateJob: Job? = null
 
     fun onDirSelected(path: String) {
-        _uiState.update { it.copy(path = path) }
+        resetSession()
+        _uiState.update {
+            it.copy(
+                connected = false,
+                status = "",
+                path = path,
+                messages = emptyList(),
+            )
+        }
         launchInViewModel {
             getSession().start()
         }
     }
 
     private fun getSession(): CodexChatSession {
-        session?.close()
-        val session = session
-        if (session != null) return session
-        val path = if (_uiState.value.path.isNullOrEmpty()) {
-            createTemporaryDir()
-        } else {
-            _uiState.value.path
+        val requestedPath = _uiState.value.path.takeUnless { it.isNullOrEmpty() }
+            ?: sessionPath
+            ?: createTemporaryDir()
+
+        session?.takeIf { sessionPath == requestedPath }?.let { existingSession ->
+            return existingSession
         }
-        return createCodexChatSession(viewModelScope, path!!).also {
+
+        resetSession()
+        return createCodexChatSession(viewModelScope, requestedPath).also {
             this.session = it
+            this.sessionPath = requestedPath
             addCloseable(it)
             observeSessionState(it)
         }
     }
 
     private fun observeSessionState(session: CodexChatSession) {
-        launchInViewModel {
+        sessionStateJob?.cancel()
+        sessionStateJob = launchInViewModel {
             session.state.collect { state ->
                 _uiState.update {
                     it.copy(
                         connected = state.connected,
                         status = state.status,
-                        messages = state.messages.map { message -> message.convert() },
+//                        messages = state.messages.map { message -> message.convert() },
                     )
                 }
             }
         }
+    }
+
+    private fun resetSession() {
+        sessionStateJob?.cancel()
+        sessionStateJob = null
+        session?.close()
+        session = null
+        sessionPath = null
     }
 
     fun onSendMessageClick(message: String) {

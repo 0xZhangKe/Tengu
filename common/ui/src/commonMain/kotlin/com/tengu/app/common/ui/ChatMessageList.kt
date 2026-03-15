@@ -20,7 +20,6 @@ fun ChatMessageList(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = contentPadding,
-        reverseLayout = true,
     ) {
         itemsIndexed(
             items = messageList,

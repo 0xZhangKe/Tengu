@@ -19,7 +19,7 @@ fun main(args: Array<String>) {
             "Hello from ACP client. Please reply with one short sentence."
         }
         runBlocking {
-            runCliClient(this, prompt)
+            runCliClient(this, prompt, "./")
         }
     } else {
         startDesktopApp()
@@ -50,8 +50,9 @@ private fun startDesktopApp() {
 private suspend fun runCliClient(
     coroutineScope: CoroutineScope,
     prompt: String,
+    projectDir: String,
 ) {
-    val session = createCodexChatSession(coroutineScope)
+    val session = createCodexChatSession(coroutineScope, projectDir)
     try {
         val result = session.send(prompt)
         println(result.reply)

@@ -1,15 +1,14 @@
 package com.tengu.app.common.ui
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.tengu.app.common.ui.model.ChatMessage
 import com.tengu.app.framework.theme.TenguTheme
 import com.tengu.app.framework.utils.dpToPx
+import com.tengu.app.framework.utils.pxToDp
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,15 +47,19 @@ fun ChatPage(
         modifier = modifier,
     ) { constraints ->
         val titlePlaceable = subcompose(ChatPageSlot.Title) {
-            TextButton(
-                onClick = onTitleClick,
+            TopAppBar(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = title,
-                    style = TenguTheme.typography.titleMedium,
-                )
+                TextButton(
+                    onClick = onTitleClick,
+                ) {
+                    Text(
+                        text = title,
+                        color = TenguTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-        }.map { it.measure(constraints) }.first()
+        }.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }.first()
         val inputPlaceable = subcompose(ChatPageSlot.InputBar) {
             ChatInputBar(
                 inputText = inputText,
@@ -71,7 +75,7 @@ fun ChatPage(
                 },
             )
         }.map { measurable ->
-            measurable.measure(constraints)
+            measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
         }.first()
 
         val inputHeight = inputPlaceable.height
@@ -81,12 +85,12 @@ fun ChatPage(
             ChatMessageList(
                 messageList = messageList,
                 contentPadding = PaddingValues(
-                    top = 16.dp,
+                    top = titlePlaceable.height.pxToDp(density) + 16.dp,
                     bottom = bottomPadding,
                 ),
             )
         }.map { measurable ->
-            measurable.measure(constraints)
+            measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
         }.first()
 
         val layoutWidth = if (constraints.hasBoundedWidth) {
@@ -102,7 +106,7 @@ fun ChatPage(
 
         layout(layoutWidth, layoutHeight) {
             contentPlaceable.placeRelative(0, 0)
-            val inputY = layoutHeight - inputHeight - 8.dpToPx(density).roundToInt()
+            val inputY = layoutHeight - inputHeight - 16.dpToPx(density).roundToInt()
             inputPlaceable.placeRelative(0, inputY)
             titlePlaceable.placeRelative(
                 x = layoutWidth / 2 - titlePlaceable.width / 2,
@@ -125,28 +129,19 @@ private fun ChatInputBar(
     onInputTextChange: (String) -> Unit,
     onSendClick: () -> Unit,
 ) {
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .imePadding()
-            .padding(start = 16.dp, top = 8.dp, end = 16.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            draggedElevation = 2.dp,
-            focusedElevation = 2.dp,
-            hoveredElevation = 2.dp,
-            pressedElevation = 2.dp,
-            disabledElevation = 2.dp,
-        ),
+            .padding(start = 16.dp, end = 16.dp),
+//        shadowElevation = 1.dp,
+        shape = TenguTheme.shapes.medium,
+        border = BorderStroke(width = 0.5.dp, color = TenguTheme.colorScheme.outlineVariant),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+        Column(
+            modifier = Modifier.fillMaxWidth(),
         ) {
             TextField(
-                modifier = Modifier.heightIn(min = 82.dp).fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp),
                 value = inputText,
                 onValueChange = onInputTextChange,
                 colors = TextFieldDefaults.colors(
@@ -154,18 +149,32 @@ private fun ChatInputBar(
                     focusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
+                    errorContainerColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
                 ),
+                textStyle = TenguTheme.typography.bodySmall,
                 placeholder = {
-                    Text(text = "Type anything...")
+                    Text(
+                        text = "Type anything...",
+                        style = TenguTheme.typography.bodySmall,
+                    )
                 },
                 minLines = 1,
-                maxLines = 4,
+                maxLines = 5,
             )
-            TextButton(
-                modifier = Modifier.align(Alignment.BottomEnd),
-                onClick = onSendClick,
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "Send")
+                Spacer(modifier = Modifier.weight(1F))
+                TextButton(
+                    modifier = Modifier,
+                    onClick = onSendClick,
+                ) {
+                    Text(text = "Send")
+                }
             }
         }
     }

@@ -15,6 +15,10 @@ import com.tengu.app.common.ui.ChatPage
 import com.tengu.app.framework.utils.ifNullOrEmpty
 import kotlinx.serialization.Serializable
 import org.koin.compose.viewmodel.koinViewModel
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
+import javax.swing.JFileChooser
 
 @Serializable
 data object HomeNavKey : NavKey
@@ -28,7 +32,9 @@ fun HomeScreen(
     HomePage(
         uiState = uiState,
         onSendMessageClick = viewModel::onSendMessageClick,
-        onTitleClick = {},
+        onTitleClick = {
+            selectDirectory(uiState.path)?.let(viewModel::onDirSelected)
+        },
     )
 }
 
@@ -77,4 +83,54 @@ private fun HomePageContent(
         onTitleClick = onTitleClick,
         onSendMessageClick = onSendMessageClick,
     )
+}
+
+private fun selectDirectory(currentPath: String?): String? {
+    return if (isMacOs()) {
+        selectDirectoryWithNativeDialog(currentPath)
+    } else {
+        selectDirectoryWithChooser(currentPath)
+    }
+}
+
+private fun selectDirectoryWithNativeDialog(currentPath: String?): String? {
+    val previous = System.getProperty("apple.awt.fileDialogForDirectories")
+    val dialog = FileDialog(null as Frame?, "Select Folder", FileDialog.LOAD)
+    return try {
+        System.setProperty("apple.awt.fileDialogForDirectories", "true")
+        dialog.directory = currentPath?.takeIf { it.isNotBlank() } ?: System.getProperty("user.home")
+        dialog.isVisible = true
+
+        val directory = dialog.directory ?: return null
+        val file = dialog.file
+        if (file.isNullOrBlank()) {
+            File(directory).absolutePath
+        } else {
+            File(directory, file).absolutePath
+        }
+    } finally {
+        dialog.dispose()
+        if (previous == null) {
+            System.clearProperty("apple.awt.fileDialogForDirectories")
+        } else {
+            System.setProperty("apple.awt.fileDialogForDirectories", previous)
+        }
+    }
+}
+
+private fun selectDirectoryWithChooser(currentPath: String?): String? {
+    val chooser = JFileChooser(currentPath ?: System.getProperty("user.home")).apply {
+        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+        isAcceptAllFileFilterUsed = false
+    }
+    val result = chooser.showOpenDialog(null)
+    return if (result == JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile?.absolutePath
+    } else {
+        null
+    }
+}
+
+private fun isMacOs(): Boolean {
+    return System.getProperty("os.name").startsWith("Mac", ignoreCase = true)
 }
