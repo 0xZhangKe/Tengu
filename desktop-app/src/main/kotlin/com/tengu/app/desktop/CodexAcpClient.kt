@@ -1,3 +1,5 @@
+@file:OptIn(com.agentclientprotocol.annotations.UnstableApi::class)
+
 package com.tengu.app.desktop
 
 import com.agentclientprotocol.client.Client
@@ -17,6 +19,7 @@ import com.agentclientprotocol.model.PermissionOptionKind
 import com.agentclientprotocol.model.ReadTextFileResponse
 import com.agentclientprotocol.model.RequestPermissionOutcome
 import com.agentclientprotocol.model.RequestPermissionResponse
+import com.agentclientprotocol.model.ModelId
 import com.agentclientprotocol.model.SessionId
 import com.agentclientprotocol.model.SessionUpdate
 import com.agentclientprotocol.model.StopReason
@@ -26,6 +29,7 @@ import com.agentclientprotocol.transport.StdioTransport
 import com.tengu.app.common.ui.model.ChatMessageRole
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,12 +69,20 @@ data class CodexChatState(
     val busy: Boolean = false,
     val status: String = "Disconnected",
     val messages: List<CodexChatMessage> = emptyList(),
+    val availableModels: List<CodexModelInfo> = emptyList(),
+    val currentModelId: String? = null,
 )
 
 data class CodexChatTurn(
     val prompt: String,
     val reply: String,
     val stopReason: StopReason,
+)
+
+data class CodexModelInfo(
+    val id: String,
+    val name: String,
+    val description: String? = null,
 )
 
 interface CodexChatSession : AutoCloseable {
@@ -82,19 +94,26 @@ interface CodexChatSession : AutoCloseable {
     suspend fun start()
 
     suspend fun send(prompt: String): CodexChatTurn
+
+    suspend fun getAvailableModels(): List<CodexModelInfo>
+
+    suspend fun setModel(modelId: String)
 }
 
 fun createCodexChatSession(
     coroutineScope: CoroutineScope,
     projectDir: String,
+    initialModel: String? = null,
 ): CodexChatSession = DefaultCodexChatSession(
     coroutineScope = coroutineScope,
     projectDir = projectDir,
+    initialModel = initialModel,
 )
 
 private class DefaultCodexChatSession(
     private val coroutineScope: CoroutineScope,
     override val projectDir: String,
+    private val initialModel: String?,
 ) : CodexChatSession {
 
     private val connectionMutex = Mutex()
@@ -106,16 +125,18 @@ private class DefaultCodexChatSession(
     private var process: Process? = null
     private var session: ClientSession? = null
     private var activeAssistantIndex: Int? = null
+    private var modelStateJob: Job? = null
 
     override suspend fun start() {
         connectionMutex.withLock {
             if (session != null) {
+                syncModelState(checkNotNull(session))
                 updateState(connected = true, status = "Ready")
                 return
             }
 
             updateState(connected = false, busy = true, status = "Launching codex-acp...")
-            val launchedProcess = launchCodexAcp(projectDir)
+            val launchedProcess = launchCodexAcp(projectDir, initialModel)
             streamAgentErrors(launchedProcess)
 
             val transport = StdioTransport(
@@ -152,10 +173,12 @@ private class DefaultCodexChatSession(
 
                 process = launchedProcess
                 session = createdSession
+                observeModelState(createdSession)
+                syncModelState(createdSession)
                 updateState(
                     connected = true,
                     busy = false,
-                    status = "Ready (${agentInfo.protocolVersion})"
+                    status = buildReadyStatus(agentInfo.protocolVersion)
                 )
             } catch (t: Throwable) {
                 destroyProcess(launchedProcess)
@@ -205,12 +228,58 @@ private class DefaultCodexChatSession(
         }
     }
 
+    override suspend fun getAvailableModels(): List<CodexModelInfo> {
+        start()
+        val currentSession = checkNotNull(session) { "ACP session is not ready" }
+        return if (!currentSession.modelsSupported) {
+            emptyList()
+        } else {
+            currentSession.availableModels.map { it.convert() }
+        }
+    }
+
+    override suspend fun setModel(modelId: String) {
+        require(modelId.isNotBlank()) { "Model id cannot be blank" }
+        start()
+        val currentSession = checkNotNull(session) { "ACP session is not ready" }
+        check(currentSession.modelsSupported) { "This ACP session does not support model selection" }
+
+        updateState(connected = true, busy = true, status = "Switching model to $modelId...")
+        try {
+            currentSession.setModel(ModelId(modelId))
+            syncModelState(currentSession)
+            updateState(
+                connected = true,
+                busy = false,
+                status = "Ready (model: ${currentSession.currentModel.value.value})"
+            )
+        } catch (t: Throwable) {
+            syncModelState(currentSession)
+            updateState(
+                connected = true,
+                busy = false,
+                status = "Set model failed: ${t.message ?: t::class.simpleName}"
+            )
+            throw t
+        }
+    }
+
     override fun close() {
+        modelStateJob?.cancel()
+        modelStateJob = null
         destroyProcess(process)
         process = null
         session = null
         activeAssistantIndex = null
-        updateState(connected = false, busy = false, status = "Disconnected")
+        _state.update { current ->
+            current.copy(
+                connected = false,
+                busy = false,
+                status = "Disconnected",
+                availableModels = emptyList(),
+                currentModelId = null,
+            )
+        }
     }
 
     private fun streamAgentErrors(process: Process) {
@@ -222,6 +291,46 @@ private class DefaultCodexChatSession(
                     }
                 }
             }
+        }
+    }
+
+    private fun observeModelState(session: ClientSession) {
+        if (!session.modelsSupported) {
+            return
+        }
+        modelStateJob?.cancel()
+        modelStateJob = coroutineScope.launch {
+            session.currentModel.collect {
+                syncModelState(session)
+            }
+        }
+    }
+
+    private fun syncModelState(session: ClientSession) {
+        val availableModels = if (session.modelsSupported) {
+            session.availableModels.map { it.convert() }
+        } else {
+            emptyList()
+        }
+        val currentModelId = if (session.modelsSupported) {
+            session.currentModel.value.value
+        } else {
+            null
+        }
+        _state.update { current ->
+            current.copy(
+                availableModels = availableModels,
+                currentModelId = currentModelId,
+            )
+        }
+    }
+
+    private fun buildReadyStatus(protocolVersion: Int): String {
+        val currentModelId = state.value.currentModelId
+        return if (currentModelId.isNullOrBlank()) {
+            "Ready ($protocolVersion)"
+        } else {
+            "Ready ($protocolVersion, model: $currentModelId)"
         }
     }
 
@@ -319,6 +428,14 @@ private class DefaultCodexChatSession(
     }
 }
 
+private fun com.agentclientprotocol.model.ModelInfo.convert(): CodexModelInfo {
+    return CodexModelInfo(
+        id = modelId.value,
+        name = name,
+        description = description,
+    )
+}
+
 private class DesktopClientSupport(
     private val projectDir: String,
     private val updateStatus: (String) -> Unit,
@@ -375,16 +492,37 @@ private class DesktopClientSession(
     }
 }
 
-private fun launchCodexAcp(projectRoot: String): Process {
+private fun launchCodexAcp(projectRoot: String, initialModel: String?): Process {
     val executable = resolveCodexAcpExecutable()
-    return ProcessBuilder(
+    val command = mutableListOf(
         executable.toString(),
         "-c",
         "shell_environment_policy.inherit=all",
     )
+    if (!initialModel.isNullOrBlank()) {
+        command += listOf("-c", "model=${escapeTomlString(initialModel)}")
+    }
+    return ProcessBuilder(command)
         .directory(File(projectRoot))
         .redirectError(ProcessBuilder.Redirect.PIPE)
         .start()
+}
+
+private fun escapeTomlString(value: String): String {
+    return buildString {
+        append('"')
+        value.forEach { char ->
+            when (char) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> append(char)
+            }
+        }
+        append('"')
+    }
 }
 
 private fun resolveCodexAcpExecutable(): Path {
