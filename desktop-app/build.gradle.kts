@@ -25,6 +25,9 @@ dependencies {
 
     implementation(libs.acp)
     runtimeOnly(libs.slf4j.simple)
+
+    implementation(libs.markdownRenderer)
+    implementation(libs.markdownRendererM3)
 }
 
 tasks.withType<KotlinCompile>().configureEach {

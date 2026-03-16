@@ -1,6 +1,7 @@
 package com.tengu.app.common.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,10 +48,12 @@ fun ChatPage(
     connected: Boolean,
     title: String,
     modelName: String,
+    branchName: String?,
     availableModels: List<String>,
     onSelectModelClick: (String) -> Unit,
     onSendMessageClick: (String) -> Unit,
     onTitleClick: () -> Unit,
+    onBranchClick: () -> Unit,
 ) {
     var inputText by remember { mutableStateOf("") }
     val density = LocalDensity.current
@@ -77,9 +80,11 @@ fun ChatPage(
                 inputText = inputText,
                 connected = connected,
                 modelName = modelName,
+                branchName = branchName,
                 availableModels = availableModels,
                 onSelectModelClick = onSelectModelClick,
                 onInputTextChange = { inputText = it },
+                onBranchClick = onBranchClick,
                 onSendClick = {
                     val message = inputText.trim()
                     if (message.isEmpty()) {
@@ -142,10 +147,12 @@ private fun ChatInputBar(
     inputText: String,
     connected: Boolean,
     modelName: String,
+    branchName: String?,
     availableModels: List<String>,
     onSelectModelClick: (String) -> Unit,
     onInputTextChange: (String) -> Unit,
     onSendClick: () -> Unit,
+    onBranchClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier
@@ -195,7 +202,15 @@ private fun ChatInputBar(
             Row(
                 modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (!branchName.isNullOrEmpty()) {
+                    Text(
+                        modifier = Modifier.noRippleClick { onBranchClick() },
+                        text = branchName,
+                        style = TenguTheme.typography.labelMedium,
+                    )
+                }
                 var selectorExpanded by remember { mutableStateOf(false) }
                 DropdownMenu(
                     modifier = Modifier,

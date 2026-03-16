@@ -3,6 +3,7 @@ package com.tengu.app.desktop.screen.home
 import com.tengu.app.common.ui.model.ChatMessage
 import com.tengu.app.common.ui.model.ChatMessageRole
 import com.tengu.app.desktop.CodexModelInfo
+import java.io.File
 import kotlin.time.Clock
 
 data class HomeUiState(
@@ -12,9 +13,12 @@ data class HomeUiState(
     val messages: List<ChatMessage>,
     val currentModel: CodexModelInfo?,
     val availableModels: List<CodexModelInfo>,
+    val branchName: String?,
 ) {
 
     val availableModelNames = availableModels.map { it.name }
+
+    val dirName: String? get() = path?.split(File.separator)?.lastOrNull()
 
     companion object {
 
@@ -26,10 +30,11 @@ data class HomeUiState(
                 currentModel = null,
                 availableModels = emptyList(),
                 messages = emptyList(),
+                branchName = null,
             )
         }
 
-        private fun mockMessageList(): List<ChatMessage>{
+        private fun mockMessageList(): List<ChatMessage> {
             return listOf(
                 ChatMessage.Text(
                     text = "Hi",

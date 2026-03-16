@@ -7,6 +7,7 @@ import com.tengu.app.desktop.CodexChatMessage
 import com.tengu.app.desktop.CodexChatSession
 import com.tengu.app.desktop.convert
 import com.tengu.app.desktop.createCodexChatSession
+import com.tengu.app.framework.git.GitUtils
 import com.tengu.app.framework.utils.launchInViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,12 +29,14 @@ class HomeViewModel : ViewModel() {
 
     fun onDirSelected(path: String) {
         resetSession()
+        val branchName = GitUtils.getBranchName(path)
         _uiState.update {
             it.copy(
                 connected = false,
                 status = "",
                 path = path,
                 messages = emptyList(),
+                branchName = branchName,
             )
         }
         launchInViewModel {

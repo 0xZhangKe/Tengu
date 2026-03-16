@@ -28,12 +28,14 @@ fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
     HomePage(
         uiState = uiState,
         onSendMessageClick = viewModel::onSendMessageClick,
         onTitleClick = {
             selectDirectory(uiState.path)?.let(viewModel::onDirSelected)
+        },
+        onBranchClick = {
+
         },
         onSelectModelClick = viewModel::onSelectModelClick,
     )
@@ -46,6 +48,7 @@ private fun HomePage(
     onSendMessageClick: (String) -> Unit,
     onTitleClick: () -> Unit,
     onSelectModelClick: (String) -> Unit,
+    onBranchClick: () -> Unit,
 ) {
     HomePageScaffold(
         modifier = Modifier.fillMaxSize(),
@@ -64,6 +67,7 @@ private fun HomePage(
         ) {
             HomePageContent(
                 uiState = uiState,
+                onBranchClick = onBranchClick,
                 onSendMessageClick = onSendMessageClick,
                 onTitleClick = onTitleClick,
                 onSelectModelClick = onSelectModelClick,
@@ -78,17 +82,20 @@ private fun HomePageContent(
     onSendMessageClick: (String) -> Unit,
     onTitleClick: () -> Unit,
     onSelectModelClick: (String) -> Unit,
+    onBranchClick: () -> Unit,
 ) {
     ChatPage(
         modifier = Modifier.fillMaxSize(),
         messageList = uiState.messages,
         connected = uiState.connected,
-        title = uiState.path.ifNullOrEmpty { "Temporary Dialogue" },
+        title = uiState.dirName.ifNullOrEmpty { "Temporary Dialogue" },
+        branchName = uiState.branchName,
         onTitleClick = onTitleClick,
         availableModels = uiState.availableModelNames,
         modelName = uiState.currentModel?.name.ifNullOrEmpty { "UNKNOWN" },
         onSelectModelClick = onSelectModelClick,
         onSendMessageClick = onSendMessageClick,
+        onBranchClick = onBranchClick,
     )
 }
 
