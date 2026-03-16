@@ -7,13 +7,12 @@ import com.tengu.app.desktop.CodexChatMessage
 import com.tengu.app.desktop.CodexChatSession
 import com.tengu.app.desktop.convert
 import com.tengu.app.desktop.createCodexChatSession
-import com.tengu.app.framework.utils.Log
 import com.tengu.app.framework.utils.launchInViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Job
 import java.io.File
 import java.util.UUID
 import kotlin.time.Clock
@@ -70,6 +69,8 @@ class HomeViewModel : ViewModel() {
                         connected = state.connected,
                         status = state.status,
                         messages = state.messages.map { message -> message.convert() },
+                        currentModel = state.availableModels.firstOrNull { model -> model.id == state.currentModelId },
+                        availableModels = state.availableModels,
                     )
                 }
             }
@@ -87,6 +88,13 @@ class HomeViewModel : ViewModel() {
     fun onSendMessageClick(message: String) {
         launchInViewModel {
             getSession().send(message)
+        }
+    }
+
+    fun onSelectModelClick(modelName: String) {
+        val modelId = _uiState.value.availableModels.first { it.name == modelName }.id
+        launchInViewModel {
+            getSession().setModel(modelId)
         }
     }
 

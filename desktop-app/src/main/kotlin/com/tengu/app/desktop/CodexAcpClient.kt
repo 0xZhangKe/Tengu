@@ -29,7 +29,6 @@ import com.agentclientprotocol.transport.StdioTransport
 import com.tengu.app.common.ui.model.ChatMessageRole
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -125,13 +124,13 @@ private class DefaultCodexChatSession(
     private var process: Process? = null
     private var session: ClientSession? = null
     private var activeAssistantIndex: Int? = null
-    private var modelStateJob: Job? = null
+    private var selectedModelId: String? = null
 
     override suspend fun start() {
         connectionMutex.withLock {
             if (session != null) {
                 syncModelState(checkNotNull(session))
-                updateState(connected = true, status = "Ready")
+                updateState(connected = true, status = buildReadyStatus())
                 return
             }
 
@@ -173,12 +172,11 @@ private class DefaultCodexChatSession(
 
                 process = launchedProcess
                 session = createdSession
-                observeModelState(createdSession)
                 syncModelState(createdSession)
                 updateState(
                     connected = true,
                     busy = false,
-                    status = buildReadyStatus(agentInfo.protocolVersion)
+                    status = buildReadyStatus(agentInfo.protocolVersion.toString())
                 )
             } catch (t: Throwable) {
                 destroyProcess(launchedProcess)
@@ -247,11 +245,12 @@ private class DefaultCodexChatSession(
         updateState(connected = true, busy = true, status = "Switching model to $modelId...")
         try {
             currentSession.setModel(ModelId(modelId))
+            selectedModelId = modelId
             syncModelState(currentSession)
             updateState(
                 connected = true,
                 busy = false,
-                status = "Ready (model: ${currentSession.currentModel.value.value})"
+                status = buildReadyStatus()
             )
         } catch (t: Throwable) {
             syncModelState(currentSession)
@@ -265,12 +264,11 @@ private class DefaultCodexChatSession(
     }
 
     override fun close() {
-        modelStateJob?.cancel()
-        modelStateJob = null
         destroyProcess(process)
         process = null
         session = null
         activeAssistantIndex = null
+        selectedModelId = null
         _state.update { current ->
             current.copy(
                 connected = false,
@@ -294,18 +292,6 @@ private class DefaultCodexChatSession(
         }
     }
 
-    private fun observeModelState(session: ClientSession) {
-        if (!session.modelsSupported) {
-            return
-        }
-        modelStateJob?.cancel()
-        modelStateJob = coroutineScope.launch {
-            session.currentModel.collect {
-                syncModelState(session)
-            }
-        }
-    }
-
     private fun syncModelState(session: ClientSession) {
         val availableModels = if (session.modelsSupported) {
             session.availableModels.map { it.convert() }
@@ -313,10 +299,11 @@ private class DefaultCodexChatSession(
             emptyList()
         }
         val currentModelId = if (session.modelsSupported) {
-            session.currentModel.value.value
+            selectedModelId ?: session.currentModel.value.value
         } else {
             null
         }
+        selectedModelId = currentModelId
         _state.update { current ->
             current.copy(
                 availableModels = availableModels,
@@ -325,12 +312,24 @@ private class DefaultCodexChatSession(
         }
     }
 
-    private fun buildReadyStatus(protocolVersion: Int): String {
+    private fun buildReadyStatus(protocolVersion: String? = null): String {
         val currentModelId = state.value.currentModelId
-        return if (currentModelId.isNullOrBlank()) {
-            "Ready ($protocolVersion)"
-        } else {
-            "Ready ($protocolVersion, model: $currentModelId)"
+        return buildString {
+            append("Ready")
+            if (!protocolVersion.isNullOrBlank() || !currentModelId.isNullOrBlank()) {
+                append(" (")
+                if (!protocolVersion.isNullOrBlank()) {
+                    append(protocolVersion)
+                    if (!currentModelId.isNullOrBlank()) {
+                        append(", ")
+                    }
+                }
+                if (!currentModelId.isNullOrBlank()) {
+                    append("model: ")
+                    append(currentModelId)
+                }
+                append(")")
+            }
         }
     }
 

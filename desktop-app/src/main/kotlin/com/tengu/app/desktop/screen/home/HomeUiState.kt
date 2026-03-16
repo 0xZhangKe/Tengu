@@ -2,6 +2,7 @@ package com.tengu.app.desktop.screen.home
 
 import com.tengu.app.common.ui.model.ChatMessage
 import com.tengu.app.common.ui.model.ChatMessageRole
+import com.tengu.app.desktop.CodexModelInfo
 import kotlin.time.Clock
 
 data class HomeUiState(
@@ -9,7 +10,11 @@ data class HomeUiState(
     val status: String,
     val path: String?,
     val messages: List<ChatMessage>,
+    val currentModel: CodexModelInfo?,
+    val availableModels: List<CodexModelInfo>,
 ) {
+
+    val availableModelNames = availableModels.map { it.name }
 
     companion object {
 
@@ -18,6 +23,8 @@ data class HomeUiState(
                 connected = false,
                 status = "",
                 path = null,
+                currentModel = null,
+                availableModels = emptyList(),
                 messages = emptyList(),
             )
         }

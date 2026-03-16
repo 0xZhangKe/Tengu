@@ -35,6 +35,7 @@ fun HomeScreen(
         onTitleClick = {
             selectDirectory(uiState.path)?.let(viewModel::onDirSelected)
         },
+        onSelectModelClick = viewModel::onSelectModelClick,
     )
 }
 
@@ -44,6 +45,7 @@ private fun HomePage(
     uiState: HomeUiState,
     onSendMessageClick: (String) -> Unit,
     onTitleClick: () -> Unit,
+    onSelectModelClick: (String) -> Unit,
 ) {
     HomePageScaffold(
         modifier = Modifier.fillMaxSize(),
@@ -64,6 +66,7 @@ private fun HomePage(
                 uiState = uiState,
                 onSendMessageClick = onSendMessageClick,
                 onTitleClick = onTitleClick,
+                onSelectModelClick = onSelectModelClick,
             )
         }
     }
@@ -74,6 +77,7 @@ private fun HomePageContent(
     uiState: HomeUiState,
     onSendMessageClick: (String) -> Unit,
     onTitleClick: () -> Unit,
+    onSelectModelClick: (String) -> Unit,
 ) {
     ChatPage(
         modifier = Modifier.fillMaxSize(),
@@ -81,6 +85,9 @@ private fun HomePageContent(
         connected = uiState.connected,
         title = uiState.path.ifNullOrEmpty { "Temporary Dialogue" },
         onTitleClick = onTitleClick,
+        availableModels = uiState.availableModelNames,
+        modelName = uiState.currentModel?.name.ifNullOrEmpty { "UNKNOWN" },
+        onSelectModelClick = onSelectModelClick,
         onSendMessageClick = onSendMessageClick,
     )
 }
